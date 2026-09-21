@@ -3,6 +3,7 @@
 .vscode/
 *.iml
 .DS_Store
+client/.git.local-backup/
 
 # Java / Maven
 backend/target/
