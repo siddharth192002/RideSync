@@ -33,18 +33,18 @@ The backend retrieves eligible files from GitHub, splits them into chunks, gener
 
 ```mermaid
 flowchart TD
-   A[User clicks Index on dashboard] --> B[POST /api/repos/{id}/index]
+   A[User clicks Index on dashboard] --> B["POST /api/repos/{id}/index"]
    B --> C[RepoController]
 
    subgraph PhaseA[Phase A - Synchronous trigger]
-      C --> D[startIndexing(repoId, userId)]
+      C --> D["startIndexing(repoId, userId)"]
       D --> D1[Validate repository ownership]
       D1 --> D2[Reject if already INDEXING]
       D2 --> D3[Set status to INDEXING and reset counters]
       D3 --> E[(PostgreSQL repositories table)]
    end
 
-   D3 --> F[indexAsync() -> doIndex()]
+   D3 --> F["indexAsync() -> doIndex()"]
 
    subgraph PhaseB[Phase B - Asynchronous indexing]
       F --> G[Decrypt GitHub token]
@@ -57,7 +57,7 @@ flowchart TD
       L --> M[Fetch file content from GitHub]
       M --> N[Split content into code chunks]
       N --> O[Add chunks to batch]
-      O --> P{Batch size >= 32?}
+      O --> P{"Batch size >= 32?"}
       P -- No --> Q[Respect GitHub rate limit]
       Q --> L
       P -- Yes --> R[Generate OpenAI embeddings]
