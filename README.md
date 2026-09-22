@@ -29,6 +29,55 @@ PostgreSQL + pgvector
 
 The backend retrieves eligible files from GitHub, splits them into chunks, generates embeddings, and stores them in pgvector. During chat, the most relevant chunks are retrieved for the question and sent to the OpenAI chat model as context.
 
+### Repository Indexing Flow
+
+```mermaid
+flowchart TD
+   A[User clicks Index on dashboard] --> B[POST /api/repos/{id}/index]
+   B --> C[RepoController]
+
+   subgraph PhaseA[Phase A - Synchronous trigger]
+      C --> D[startIndexing(repoId, userId)]
+      D --> D1[Validate repository ownership]
+      D1 --> D2[Reject if already INDEXING]
+      D2 --> D3[Set status to INDEXING and reset counters]
+      D3 --> E[(PostgreSQL repositories table)]
+   end
+
+   D3 --> F[indexAsync() -> doIndex()]
+
+   subgraph PhaseB[Phase B - Asynchronous indexing]
+      F --> G[Decrypt GitHub token]
+      G --> H[Delete existing vectors for repository]
+      H --> I[Fetch repository tree from GitHub API]
+      I --> J[Filter indexable files]
+      J --> J1[Exclude node_modules, lock files, binaries, and oversized files]
+      J1 --> K[Update progress counters]
+      K --> L[Loop through each file]
+      L --> M[Fetch file content from GitHub]
+      M --> N[Split content into code chunks]
+      N --> O[Add chunks to batch]
+      O --> P{Batch size >= 32?}
+      P -- No --> Q[Respect GitHub rate limit]
+      Q --> L
+      P -- Yes --> R[Generate OpenAI embeddings]
+      R --> S[Store vectors in pgvector]
+      S --> Q
+      Q --> T{More files?}
+      T -- Yes --> L
+      T -- No --> U[Set status to READY and indexedAt]
+   end
+
+   E -. Return immediately .-> V[Frontend polls indexing status]
+   K -. Persist filesProcessed and progress .-> E
+   U --> E
+   U --> W[Chat becomes available]
+
+   M -. File error: log warning and continue .-> L
+   F -. Any unrecoverable error .-> X[Set status to FAILED and save error]
+   X --> E
+```
+
 ## Prerequisites
 
 - Java 23
@@ -110,18 +159,18 @@ Chat is unavailable until the selected repository has completed indexing.
 
 Authenticated endpoints are served by the backend at `http://localhost:8080`.
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/auth/me` | Get the signed-in user |
-| `POST` | `/api/auth/logout` | End the current session |
-| `GET` | `/api/repos?refresh=true` | Sync and list GitHub repositories |
-| `GET` | `/api/repos/{id}` | Get repository details |
-| `POST` | `/api/repos/{id}/index` | Start asynchronous indexing |
-| `GET` | `/api/repos/{id}/status` | Read indexing progress |
-| `POST` | `/api/chat/sessions` | Create a chat session |
-| `GET` | `/api/chat/sessions?repositoryId={id}` | List repository chat sessions |
-| `GET` | `/api/chat/sessions/{id}` | Get chat messages |
-| `POST` | `/api/chat/sessions/{id}/messages` | Stream an AI response over SSE |
+| Method | Endpoint                               | Purpose                           |
+| ------ | -------------------------------------- | --------------------------------- |
+| `GET`  | `/api/auth/me`                         | Get the signed-in user            |
+| `POST` | `/api/auth/logout`                     | End the current session           |
+| `GET`  | `/api/repos?refresh=true`              | Sync and list GitHub repositories |
+| `GET`  | `/api/repos/{id}`                      | Get repository details            |
+| `POST` | `/api/repos/{id}/index`                | Start asynchronous indexing       |
+| `GET`  | `/api/repos/{id}/status`               | Read indexing progress            |
+| `POST` | `/api/chat/sessions`                   | Create a chat session             |
+| `GET`  | `/api/chat/sessions?repositoryId={id}` | List repository chat sessions     |
+| `GET`  | `/api/chat/sessions/{id}`              | Get chat messages                 |
+| `POST` | `/api/chat/sessions/{id}/messages`     | Stream an AI response over SSE    |
 
 ## Project Structure
 
