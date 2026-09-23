@@ -24,6 +24,7 @@ client/*.tsbuildinfo
 !**/.env.example
 *.pem
 application-local.properties
+backend/src/main/resources/application.properties
 
 # Logs
 *.log

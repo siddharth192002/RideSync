@@ -97,6 +97,9 @@ flowchart TD
 
 2. Configure the backend environment. PowerShell example:
 
+   Copy `backend/src/main/resources/application.properties.example` to
+   `backend/src/main/resources/application.properties` before starting the backend.
+
    ```powershell
    $env:OPENAI_API_KEY="your-openai-api-key"
    $env:GITHUB_CLIENT_ID="your-github-oauth-client-id"
