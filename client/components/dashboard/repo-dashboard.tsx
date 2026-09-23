@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FolderGit2 } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { RepoCard } from "@/components/dashboard/repo-card";
+import { RepoCard } from "@/components/dashboard/rep-card";
 import { Button } from "@/components/ui/button";
 import {
   Empty,

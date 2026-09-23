@@ -1,114 +1,99 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FolderGit2 } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { RepoCard } from "@/components/dashboard/repo-card";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useRefreshRepos, useRepos } from "@/hooks/use-repos";
+import { Input } from "@/components/ui/input";
 import type { IndexStatus } from "@/lib/api";
 
 type FilterStatus = "ALL" | IndexStatus;
 
-export function RepoDashboard() {
-  const reposQuery = useRepos();
-  const refresh = useRefreshRepos();
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<FilterStatus>("ALL");
-  const [visibility, setVisibility] = useState<"all" | "public" | "private">(
-    "all"
-  );
+type DashboardHeaderProps = {
+  search: string;
+  onSearchChange: (value: string) => void;
+  visibility: "all" | "public" | "private";
+  onVisibilityChange: (value: "all" | "public" | "private") => void;
+  status: FilterStatus;
+  onStatusChange: (value: FilterStatus) => void;
+  totalCount?: number;
+  readyCount: number;
+  onSync: () => void;
+  isSyncing: boolean;
+};
 
-  const filtered = useMemo(() => {
-    const list = reposQuery.data ?? [];
-    const q = search.trim().toLowerCase();
-
-    return list.filter((repo) => {
-      if (status !== "ALL" && repo.indexStatus !== status) return false;
-      if (visibility === "private" && !repo.isPrivate) return false;
-      if (visibility === "public" && repo.isPrivate) return false;
-      if (!q) return true;
-      return (
-        repo.fullName.toLowerCase().includes(q) ||
-        (repo.description ?? "").toLowerCase().includes(q) ||
-        (repo.language ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [reposQuery.data, search, status, visibility]);
-
-  const readyCount =
-    reposQuery.data?.filter((r) => r.indexStatus === "READY").length ?? 0;
-
+export function DashboardHeader({
+  search,
+  onSearchChange,
+  visibility,
+  onVisibilityChange,
+  status,
+  onStatusChange,
+  totalCount = 0,
+  readyCount,
+  onSync,
+  isSyncing,
+}: DashboardHeaderProps) {
   return (
-    <div className="flex min-h-full flex-col">
-      <DashboardHeader
-        search={search}
-        onSearchChange={setSearch}
-        visibility={visibility}
-        onVisibilityChange={setVisibility}
-        status={status}
-        onStatusChange={setStatus}
-        totalCount={reposQuery.data?.length}
-        readyCount={readyCount}
-        onSync={() => refresh.mutate()}
-        isSyncing={refresh.isPending || reposQuery.isFetching}
-      />
+    <header className="border-b border-border/70 px-4 py-4 md:px-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h1 className="font-heading text-xl font-semibold">Repositories</h1>
+          <p className="text-sm text-muted-foreground">
+            {totalCount} connected, {readyCount} ready to chat
+          </p>
+        </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-        {reposQuery.isLoading && (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-64 rounded-2xl" />
-            ))}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-0 sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search repositories"
+              aria-label="Search repositories"
+              className="pl-9"
+            />
           </div>
-        )}
 
-        {reposQuery.isError && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FolderGit2 />
-              </EmptyMedia>
-              <EmptyTitle>Couldn’t load repositories</EmptyTitle>
-              <EmptyDescription>
-                {(reposQuery.error as Error).message}
-              </EmptyDescription>
-            </EmptyHeader>
-            <Button onClick={() => void reposQuery.refetch()}>Try again</Button>
-          </Empty>
-        )}
+          <select
+            value={visibility}
+            onChange={(event) =>
+              onVisibilityChange(
+                event.target.value as DashboardHeaderProps["visibility"]
+              )
+            }
+            aria-label="Filter by visibility"
+            className="h-9 rounded-4xl border border-input bg-input/30 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <option value="all">All visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
 
-        {reposQuery.isSuccess && filtered.length === 0 && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FolderGit2 />
-              </EmptyMedia>
-              <EmptyTitle>No repositories match</EmptyTitle>
-              <EmptyDescription>
-                Try clearing filters or syncing again.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
+          <select
+            value={status}
+            onChange={(event) =>
+              onStatusChange(event.target.value as FilterStatus)
+            }
+            aria-label="Filter by indexing status"
+            className="h-9 rounded-4xl border border-input bg-input/30 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <option value="ALL">All status</option>
+            <option value="PENDING">Not indexed</option>
+            <option value="INDEXING">Indexing</option>
+            <option value="READY">Ready</option>
+            <option value="FAILED">Failed</option>
+          </select>
 
-        {reposQuery.isSuccess && filtered.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((repo) => (
-              <RepoCard key={repo.id} repo={repo} />
-            ))}
-          </div>
-        )}
+          <Button variant="outline" onClick={onSync} disabled={isSyncing}>
+            <RefreshCw
+              className={isSyncing ? "animate-spin" : undefined}
+              data-icon="inline-start"
+            />
+            Sync
+          </Button>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

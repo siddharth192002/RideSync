@@ -12,7 +12,8 @@ import org.springframework.web.client.RestClient;
 @EnableAsync
 public class AppConfig {
     @Bean
-    RestClient.Builder restClientBuilder() {
+    RestClient.Builder restClientBuilder() 
+    {
         return RestClient.builder();
     }
 

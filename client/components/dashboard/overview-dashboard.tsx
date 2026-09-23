@@ -9,7 +9,7 @@ import {
   MessageSquareCode,
 } from "lucide-react";
 
-import { RepoCard } from "@/components/dashboard/repo-card";
+import { RepoCard } from "@/components/dashboard/rep-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
